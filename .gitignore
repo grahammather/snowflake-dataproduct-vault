@@ -1,1 +1,6 @@
-vault-jwt-auth-role.json
+*.terraform*
+*.tfstate
+*.tfstate.*
+*.tfvars
+gha-jwt-auth-role.json
+terraform.tfvars
