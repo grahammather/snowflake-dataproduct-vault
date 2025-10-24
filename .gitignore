@@ -4,3 +4,6 @@
 *.tfvars
 gha-jwt-auth-role.json
 terraform.tfvars
+
+# Ignore generated GitHub workflow inputs
+.github/workflows/inputs.json

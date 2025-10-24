@@ -17,7 +17,7 @@ on:
         description: 'Vault JWT auth role name'
         type: string
         required: true
-        default: 'github-actions'
+        default: 'gha-role'
       vault_namespace:
         description: 'Vault namespace (HCP or Enterprise)'
         type: string
@@ -28,16 +28,14 @@ on:
         type: string
         required: true
         default: 'database/creds/snowflake-role'
-      organization_name:
+      snowflake_organization_name:
         description: 'Snowflake organization identifier'
         type: string
         required: true
-        default: 'cibyvpq'
-      account_name:
+      snowflake_account_name:
         description: 'Snowflake account name/locator'
         type: string
         required: true
-        default: 'qkb30038'
 
 permissions:
   id-token: write
@@ -49,8 +47,7 @@ env:
   TF_CLI_ARGS_init: -no-color
   TF_CLI_ARGS_plan: -no-color
   TF_CLI_ARGS_apply: -no-color
-  # Uncomment if you use Terraform Cloud and add TF_API_TOKEN in repo secrets
-  # TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
+  TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
 
 jobs:
   snowflake-dynamic-creds:
@@ -72,7 +69,7 @@ jobs:
             ${{ inputs.vault_secret_path }} private_key | private_key
 
   plan:
-    name: Plan
+    name: Speculative Plan
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     needs: snowflake-dynamic-creds
     runs-on: ubuntu-latest
@@ -82,7 +79,6 @@ jobs:
     defaults:
       run:
         shell: bash
-        working-directory: snowflake
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -102,32 +98,39 @@ jobs:
       - name: Terraform plan
         run: |
           terraform plan \
-            -var="organization_name=${{ inputs.organization_name }}" \
-            -var="account_name=${{ inputs.account_name }}" \
-            -out=tfplan.binary
+            -var="organization_name=${{ inputs.snowflake_organization_name }}" \
+            -var="account_name=${{ inputs.snowflake_account_name }}" \
+            -input=false \
+            -out=tfplan
 
-      - name: Show plan as text
-        run: terraform show -no-color tfplan.binary > tfplan.txt
+      - name: Capture Plan Output
+        if: github.event_name == 'pull_request'
+        run: |
+          # Capture the output from the already-created saved plan (tfplan)
+          if [ -f tfplan ]; then
+            PLAN_OUTPUT=$(terraform show -no-color tfplan)
+          else
+            # Fallback: try to show the most recent plan output
+            PLAN_OUTPUT=$(terraform show -no-color)
+          fi
+          echo "plan_output<<EOF" >> $GITHUB_ENV
+          echo "$PLAN_OUTPUT" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
 
-      - name: Upload plan artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: tfplan
-          path: |
-            tfplan.binary
-            tfplan.txt
-
-      - name: Comment plan summary on PR
+      - name: Comment Plan on PR
         if: github.event_name == 'pull_request'
         uses: thollander/actions-comment-pull-request@v2
         with:
           message: |
-            Terraform plan completed. See attached artifact `tfplan.txt` for details.
+            Terraform plan output:
+            ```hcl
+            ${{ env.plan_output }}
+            ```
           comment_tag: terraform-plan
 
   apply:
     name: Apply
-    needs: [plan, snowflake-dynamic-creds]
+    needs: snowflake-dynamic-creds
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
@@ -136,7 +139,6 @@ jobs:
     defaults:
       run:
         shell: bash
-        working-directory: snowflake
     env:
       SNOWFLAKE_USER: ${{ needs.snowflake-dynamic-creds.outputs.snowflake_user }}
       SNOWFLAKE_PRIVATE_KEY: ${{ needs.snowflake-dynamic-creds.outputs.snowflake_private_key }}
@@ -150,13 +152,10 @@ jobs:
       - name: Terraform init
         run: terraform init
 
-      # Simple apply. For a two step apply using the exact saved plan, download the artifact and run `terraform apply tfplan.binary`.
-      - name: Terraform plan
-        run: |
-          terraform plan \
-            -var="organization_name=${{ inputs.organization_name }}" \
-            -var="account_name=${{ inputs.account_name }}" \
-            -out=tfplan.binary
-
+      # Apply changes directly (no prior saved plan)
       - name: Terraform apply
-        run: terraform apply -auto-approve tfplan.binary
+        run: |
+          terraform apply -auto-approve \
+            -var="organization_name=${{ inputs.snowflake_organization_name }}" \
+            -var="account_name=${{ inputs.snowflake_account_name }}" \
+            -input=false
