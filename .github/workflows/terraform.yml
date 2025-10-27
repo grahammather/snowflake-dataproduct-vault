@@ -58,8 +58,8 @@ jobs:
   snowflake-dynamic-creds:
     runs-on: ubuntu-latest
     outputs:
-      snowflake_user: ${{ steps.extract-creds.outputs.SNOWFLAKE_USERNAME }}
-      snowflake_private_key: ${{ steps.extract-creds.outputs.SNOWFLAKE_RSA_PRIVATE_KEY }}
+      snowflake_user: ${{ steps.get-creds.outputs.SNOWFLAKE_USERNAME }}
+      snowflake_private_key: ${{ steps.get-creds.outputs.SNOWFLAKE_RSA_PRIVATE_KEY }}
     steps:
       - name: Get Snowflake credentials from Vault
         id: get-creds
