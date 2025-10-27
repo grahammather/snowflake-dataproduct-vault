@@ -13,11 +13,16 @@ on:
         type: string
         required: true
         default: 'https://vault.example.com:8200'
-      vault_role:
+      vault_auth_role:
         description: 'Vault JWT auth role name'
         type: string
         required: true
         default: 'gha-role'
+      vault_auth_path:
+        description: 'Vault JWT auth mount path'
+        type: string
+        required: true
+        default: 'jwt'
       vault_namespace:
         description: 'Vault namespace (HCP or Enterprise)'
         type: string
@@ -62,7 +67,8 @@ jobs:
         with:
           method: jwt
           url: ${{ inputs.vault_addr }}
-          role: ${{ inputs.vault_role }}
+          role: ${{ inputs.vault_auth_role }}
+          path: ${{ inputs.vault_auth_path }}
           namespace: ${{ inputs.vault_namespace }}
           secrets: |
             ${{ inputs.vault_secret_path }} * | SNOWFLAKE_
