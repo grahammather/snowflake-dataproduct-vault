@@ -58,7 +58,6 @@ jobs:
   plan:
     name: Speculative Plan
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
-    needs: snowflake-dynamic-creds
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -130,7 +129,6 @@ jobs:
 
   apply:
     name: Apply
-    needs: snowflake-dynamic-creds
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
