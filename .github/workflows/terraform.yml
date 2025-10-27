@@ -58,7 +58,7 @@ jobs:
     steps:
       - name: Get Snowflake credentials from Vault
         id: get-creds
-        uses: hashicorp/vault-action
+        uses: hashicorp/vault-action@v3.4.0
         with:
           method: jwt
           url: ${{ inputs.vault_addr }}
