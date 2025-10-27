@@ -54,13 +54,18 @@ env:
   TF_CLI_ARGS_apply: -no-color
   TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
 
-jobs:
-  snowflake-dynamic-creds:
+  plan:
+    name: Speculative Plan
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    needs: snowflake-dynamic-creds
     runs-on: ubuntu-latest
-    outputs:
-      snowflake_user: ${{ steps.get-creds.outputs.SNOWFLAKE_USERNAME }}
-      snowflake_private_key: ${{ steps.get-creds.outputs.SNOWFLAKE_RSA_PRIVATE_KEY }}
+    defaults:
+      run:
+        shell: bash
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Get Snowflake credentials from Vault
         id: get-creds
         uses: hashicorp/vault-action@v3.4.0
@@ -74,25 +79,13 @@ jobs:
             ${{ inputs.vault_secret_path }} username | SNOWFLAKE_USERNAME ;
             ${{ inputs.vault_secret_path }} rsa_private_key | SNOWFLAKE_RSA_PRIVATE_KEY ;
 
-  plan:
-    name: Speculative Plan
-    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
-    needs: snowflake-dynamic-creds
-    runs-on: ubuntu-latest
-    env:
-      SNOWFLAKE_USER: ${{ needs.snowflake-dynamic-creds.outputs.snowflake_user }}
-      SNOWFLAKE_PRIVATE_KEY: ${{ needs.snowflake-dynamic-creds.outputs.snowflake_private_key }}
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
 
       - name: Terraform init
+        env:
+          SNOWFLAKE_USER: ${{ steps.get-creds.outputs.SNOWFLAKE_USERNAME }}
+          SNOWFLAKE_PRIVATE_KEY: ${{ steps.get-creds.outputs.SNOWFLAKE_RSA_PRIVATE_KEY }}
         run: terraform init
 
       - name: Terraform fmt check
