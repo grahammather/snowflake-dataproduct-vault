@@ -71,7 +71,8 @@ jobs:
           path: ${{ inputs.vault_auth_path }}
           namespace: ${{ inputs.vault_namespace }}
           secrets: |
-            ${{ inputs.vault_secret_path }} * | SNOWFLAKE_
+            ${{ inputs.vault_secret_path }} username | SNOWFLAKE_USERNAME
+            ${{ inputs.vault_secret_path }} rsa_private_key | SNOWFLAKE_RSA_PRIVATE_KEY
 
   plan:
     name: Speculative Plan
