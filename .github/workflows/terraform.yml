@@ -53,20 +53,19 @@ jobs:
   snowflake-dynamic-creds:
     runs-on: ubuntu-latest
     outputs:
-      snowflake_user: ${{ steps.vault-auth.outputs.username }}
-      snowflake_private_key: ${{ steps.vault-auth.outputs.private_key }}
+      snowflake_user: ${{ steps.extract-creds.outputs.SNOWFLAKE_USERNAME }}
+      snowflake_private_key: ${{ steps.extract-creds.outputs.SNOWFLAKE_RSA_PRIVATE_KEY }}
     steps:
       - name: Get Snowflake credentials from Vault
-        id: vault-auth
-        uses: hashicorp/vault-action@v2
+        id: get-creds
+        uses: hashicorp/vault-action
         with:
           method: jwt
           url: ${{ inputs.vault_addr }}
           role: ${{ inputs.vault_role }}
           namespace: ${{ inputs.vault_namespace }}
           secrets: |
-            ${{ inputs.vault_secret_path }} username | username
-            ${{ inputs.vault_secret_path }} private_key | private_key
+            ${{ inputs.vault_secret_path }} * | SNOWFLAKE_
 
   plan:
     name: Speculative Plan
