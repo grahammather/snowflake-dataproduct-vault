@@ -54,6 +54,7 @@ env:
   TF_CLI_ARGS_apply: -no-color
   TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
 
+jobs:
   plan:
     name: Speculative Plan
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
@@ -145,10 +146,26 @@ env:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Get Snowflake credentials from Vault
+        id: get-creds
+        uses: hashicorp/vault-action@v3.4.0
+        with:
+          method: jwt
+          url: ${{ inputs.vault_addr }}
+          role: ${{ inputs.vault_auth_role }}
+          path: ${{ inputs.vault_auth_path }}
+          namespace: ${{ inputs.vault_namespace }}
+          secrets: |
+            ${{ inputs.vault_secret_path }} username | SNOWFLAKE_USERNAME ;
+            ${{ inputs.vault_secret_path }} rsa_private_key | SNOWFLAKE_RSA_PRIVATE_KEY ;
+
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
 
       - name: Terraform init
+        env:
+          SNOWFLAKE_USER: ${{ steps.get-creds.outputs.SNOWFLAKE_USERNAME }}
+          SNOWFLAKE_PRIVATE_KEY: ${{ steps.get-creds.outputs.SNOWFLAKE_RSA_PRIVATE_KEY }}
         run: terraform init
 
       # Apply changes directly (no prior saved plan)
