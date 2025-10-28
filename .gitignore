@@ -2,6 +2,7 @@
 *.tfstate
 *.tfstate.*
 *.tfvars
+tfc-jwt-auth-role.json
 gha-jwt-auth-role.json
 terraform.tfvars
 

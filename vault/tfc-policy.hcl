@@ -15,5 +15,5 @@ path "auth/token/revoke-self" {
 
 # Configure the actual secrets the token should have access to
 path "database/*" {
-  capabilities = ["read", "update"]
+  capabilities = ["read"]
 }
