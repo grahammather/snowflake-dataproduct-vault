@@ -1,4 +1,10 @@
 terraform {
+  cloud {
+    organization = "gmather-org"
+    workspaces {
+      name = "snowflake-dataproduct-vault-simple"
+    }
+  }
   required_providers {
     snowflake = {
       source = "snowflakedb/snowflake"
